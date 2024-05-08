@@ -19,7 +19,7 @@ def predict_imshow(img_path, model, colab=True):
     if colab == True:
         from google.colab.patches import cv2_imshow
         cv2_imshow(img)
-        time.sleep(0.3)
+        time.sleep(3)
         display.clear_output(wait=True)
         return img
     else:
@@ -27,10 +27,10 @@ def predict_imshow(img_path, model, colab=True):
         plt.imshow(img)
         plt.axis("off")
         plt.show()
-        time.sleep(0.3)
+        time.sleep(3)
         display.clear_output(wait=True)
         return img
-        
+
 def result_img_save(result_img, model):
     return result_img[0].plot()
         
@@ -44,34 +44,60 @@ def detection_class(results):
     return class_list
 
 
-# class ImageHandler(FileSystemEventHandler):
-#     def __init__(self, model, save_folder_path):
-#         self.model = prediction_results()
-#         self.save_folder_path = save_folder_path
+class ImageHandler(FileSystemEventHandler):
+    def __init__(self, model, save_folder_path):
+        self.model = prediction_results()
+        self.save_folder_path = save_folder_path
 
-#     def on_created(self, event):
-#         if event.is_directory:
-#             return
-#         if event.src_path.lower().endswith((".png", ".jpg", ".jpeg")):
-#             try:
-#                 img = self.prediction_results(event.src_path)
-#                 print(f"Processed image: {event.src_path}")
-#             except Exception as e:
-#                 print(f"Failed to process {event.src_path}: {e}")
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        if event.src_path.lower().endswith((".png", ".jpg", ".jpeg")):
+            try:
+                result = self.prediction_results(event.src_path)
+                cv2.imwrite(result[0].plot)
+            except Exception as e:
+                print(f"Failed to process {event.src_path}: {e}")
     
-# def start_program(image_folder_path, model):
-#     event_handler = ImageHandler(model)
-#     observer = Observer()
-#     observer.schedule(event_handler, path=image_folder_path, recursive=False)
-#     observer.start()
+def start_program(image_folder_path, model):
+    event_handler = ImageHandler(model)
+    observer = Observer()
+    observer.schedule(event_handler, path=image_folder_path, recursive=False)
+    observer.start()
     
-#     try:
-#         while True:
-#             time.sleep(1)
-#     except KeyboardInterrupt:
-#         observer.stop()
-#         observer.join()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+        observer.join()
 
+# def video(video_path, model, colab=True):
+#     if not os.path.isdir("./image_data"):
+#         os.mkdir("./image_data")
+#     if not os.path.isdir("./save_data"):
+#         os.mkdir("./save_data")
+#     vidcap = cv2.VideoCapture(video_path)
+#     success, image = vidcap.read()
+#     count = 0
+#     while success:
+#         img_path = f"./image_data/{count:06d}.jpg"
+#         cv2.imwrite(img_path, image)
+#         success, image = vidcap.read()
+#         count += 1
+#     for path in os.listdir("./image_data"):
+#         save_img_path = f"./save_data/{count:06d}.jpg"
+#         detection_img = predict_imshow(path, model, colab)
+#         cv2.imwrite(save_img_path, detection_img)
+#     image_list = os.listdir("./image_data")
+#     attendance_check = []
+#     for path in image_list:
+#         result = prediction_results(path)
+#         attendance_check.append(detection_class(result))
+#     return attendance_check
+
+
+# 테스트용
 def video(video_path, model, colab=True):
     if not os.path.isdir("./image_data"):
         os.mkdir("./image_data")
@@ -80,18 +106,18 @@ def video(video_path, model, colab=True):
     vidcap = cv2.VideoCapture(video_path)
     success, image = vidcap.read()
     count = 0
-    while success:
+    for _ in range(0, 10, 1):
         img_path = f"./image_data/{count:06d}.jpg"
         cv2.imwrite(img_path, image)
         success, image = vidcap.read()
         count += 1
     for path in os.listdir("./image_data"):
         save_img_path = f"./save_data/{count:06d}.jpg"
-        detection_img = predict_imshow(img_path, model, colab)
+        detection_img = predict_imshow(path, model, colab)
         cv2.imwrite(save_img_path, detection_img)
     image_list = os.listdir("./image_data")
     attendance_check = []
     for path in image_list:
         result = prediction_results(path)
         attendance_check.append(detection_class(result))
-    return Counter(attendance_check)
+    return attendance_check
