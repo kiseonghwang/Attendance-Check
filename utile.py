@@ -1,6 +1,7 @@
 import cv2
 import time
 import os
+from IPython import display
 from collections import Counter
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -18,12 +19,16 @@ def predict_imshow(img_path, model, colab=True):
     if colab == True:
         from google.colab.patches import cv2_imshow
         cv2_imshow(img)
+        time.sleep(0.3)
+        display.clear_output(wait=True)
         return img
     else:
         import matplotlib.pyplot as plt
         plt.imshow(img)
         plt.axis("off")
         plt.show()
+        time.sleep(0.3)
+        display.clear_output(wait=True)
         return img
         
 def result_img_save(result_img, model):
@@ -77,12 +82,13 @@ def video(video_path, model, colab=True):
     count = 0
     while success:
         img_path = f"./image_data/{count:06d}.jpg"
-        save_img_path = f"./image_data/{count:06d}.jpg"
         cv2.imwrite(img_path, image)
-        detection_img = predict_imshow(img_path, model, colab)
-        cv2.imwrite(save_img_path, detection_img)
         success, image = vidcap.read()
         count += 1
+    for path in os.listdir("./image_data"):
+        save_img_path = f"./save_data/{count:06d}.jpg"
+        detection_img = predict_imshow(img_path, model, colab)
+        cv2.imwrite(save_img_path, detection_img)
     image_list = os.listdir("./image_data")
     attendance_check = []
     for path in image_list:
