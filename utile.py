@@ -1,6 +1,7 @@
 import cv2
 import time
 import os
+from collections import Counter
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -75,14 +76,16 @@ def video(video_path, model, colab=True):
     success, image = vidcap.read()
     count = 0
     while success:
-        cv2.imwrite("./image_data/%06d.jpg" % count, image)
-        detection_img = predict_imshow(image, colab=True)
-        cv2.imwrite("./save_data/%06d.jpg" % count, detection_img)
+        img_path = f"./image_data/{count:06d}.jpg"
+        save_img_path = f"./image_data/{count:06d}.jpg"
+        cv2.imwrite(img_path, image)
+        detection_img = predict_imshow(img_path, model, colab)
+        cv2.imwrite(save_img_path, detection_img)
         success, image = vidcap.read()
         count += 1
-    image_list = os.listdir()
+    image_list = os.listdir("./image_data")
     attendance_check = []
     for path in image_list:
         result = prediction_results(path)
         attendance_check.append(detection_class(result))
-    return attendance_check.count()
+    return Counter(attendance_check)
