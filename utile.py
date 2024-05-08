@@ -17,11 +17,13 @@ def predict_imshow(img_path, model, colab=True):
     if colab == True:
         from google.colab.patches import cv2_imshow
         cv2_imshow(img)
+        return img
     else:
         import matplotlib.pyplot as plt
         plt.imshow(img)
         plt.axis("off")
         plt.show()
+        return img
         
 def result_img_save(result_img, model):
     return result_img[0].plot()
@@ -64,16 +66,18 @@ def detection_class(results):
 #         observer.stop()
 #         observer.join()
 
-def video(video_path, model):
+def video(video_path, model, colab=True):
     if not os.path.isdir("./image_data"):
         os.mkdir("./image_data")
-    if not os.path.isdir("./save"):
-        os.mkdir("./save")
+    if not os.path.isdir("./save_data"):
+        os.mkdir("./save_data")
     vidcap = cv2.VideoCapture(video_path)
     success, image = vidcap.read()
     count = 0
     while success:
         cv2.imwrite("./image_data/%06d.jpg" % count, image)
+        detection_img = predict_imshow(image, colab=True)
+        cv2.imwrite("./save_data/%06d.jpg" % count, detection_img)
         success, image = vidcap.read()
         count += 1
     image_list = os.listdir()
