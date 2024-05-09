@@ -136,7 +136,7 @@ def video(video_path, model, colab=True, show=True, cuda=True):
         cv2.imwrite(save_img_path, detection_img)
         attendance_check.append(detection_class(result))
         count += 1
-    return attendance_check
+    return matching_class(attendance_check)
 
 
 # 테스트용
