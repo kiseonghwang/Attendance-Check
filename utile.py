@@ -1,6 +1,7 @@
 import cv2
 import time
 import os
+import natsort
 from IPython import display
 from collections import Counter
 from watchdog.observers import Observer
@@ -11,12 +12,13 @@ def image_processing(img_path):
     img = cv2.resize(img, (640, 640))
     return img
 
-def predict_imshow(img_path, model, colab=True):
+def predict_imshow(img_path, results, show=True, colab=True):
     img = image_processing(img_path)
-    results = model.predict(img)
     img = results[0].plot()
+    if show == True:
+        return img
     
-    if colab == True:
+    elif colab == True:
         from google.colab.patches import cv2_imshow
         cv2_imshow(img)
         time.sleep(3)
@@ -31,10 +33,12 @@ def predict_imshow(img_path, model, colab=True):
         display.clear_output(wait=True)
         return img
 
-def result_img_save(result_img, model):
-    return result_img[0].plot()
+def result_img_save(result_img):
+    return cv2.imwrite("./save_data", result_img[0].plot())
         
-def prediction_results(img_path, model):
+def prediction_results(img_path, model, cuda=True):
+    if cuda == True:
+        return model.predict(image_processing(img_path), device="0")
     return model.predict(image_processing(img_path))
 
 def detection_class(results):
@@ -43,19 +47,28 @@ def detection_class(results):
         class_list.append(results[0].names[int(i)])
     return class_list
 
+def matching_class(names, counts):
+    for name in names:
+        number = len(name) * 1000
+        if number >= counts:
+            print(f"{name}: 출석 O")
+        else:
+            print(f"{name}: 출석 X")
 
 class ImageHandler(FileSystemEventHandler):
     def __init__(self, model, save_folder_path):
         self.model = prediction_results()
         self.save_folder_path = save_folder_path
-
+        if not os.path.isdir("./save_data"):
+           os.mkdir("./save_data")
     def on_created(self, event):
         if event.is_directory:
             return
         if event.src_path.lower().endswith((".png", ".jpg", ".jpeg")):
             try:
-                result = self.prediction_results(event.src_path)
-                cv2.imwrite(result[0].plot)
+                result = self.prediction_results(event.src_path, self.model)
+                result_img_save(result)
+                return detection_class(result)
             except Exception as e:
                 print(f"Failed to process {event.src_path}: {e}")
     
@@ -72,33 +85,7 @@ def start_program(image_folder_path, model):
         observer.stop()
         observer.join()
 
-# def video(video_path, model, colab=True):
-#     if not os.path.isdir("./image_data"):
-#         os.mkdir("./image_data")
-#     if not os.path.isdir("./save_data"):
-#         os.mkdir("./save_data")
-#     vidcap = cv2.VideoCapture(video_path)
-#     success, image = vidcap.read()
-#     count = 0
-#     while success:
-#         img_path = f"./image_data/{count:06d}.jpg"
-#         cv2.imwrite(img_path, image)
-#         success, image = vidcap.read()
-#         count += 1
-#     for path in os.listdir("./image_data"):
-#         save_img_path = f"./save_data/{count:06d}.jpg"
-#         detection_img = predict_imshow(path, model, colab)
-#         cv2.imwrite(save_img_path, detection_img)
-#     image_list = os.listdir("./image_data")
-#     attendance_check = []
-#     for path in image_list:
-#         result = prediction_results(path)
-#         attendance_check.append(detection_class(result))
-#     return attendance_check
-
-
-# 테스트용
-def video(video_path, model, colab=True):
+def video(video_path, model, colab=True, show=True, cuda=True):
     if not os.path.isdir("./image_data"):
         os.mkdir("./image_data")
     if not os.path.isdir("./save_data"):
@@ -106,18 +93,46 @@ def video(video_path, model, colab=True):
     vidcap = cv2.VideoCapture(video_path)
     success, image = vidcap.read()
     count = 0
-    for _ in range(0, 10, 1):
+    attendance_check = []
+    while success:
         img_path = f"./image_data/{count:06d}.jpg"
         cv2.imwrite(img_path, image)
         success, image = vidcap.read()
         count += 1
-    for path in os.listdir("./image_data"):
+    count = 0
+    for path in natsort.natsorted(os.listdir('image_data')):
         save_img_path = f"./save_data/{count:06d}.jpg"
-        detection_img = predict_imshow(path, model, colab)
+        img_path = os.path.join("./image_data", path)
+        result = prediction_results(img_path, model, cuda)
+        detection_img = predict_imshow(img_path, result, show, colab)
         cv2.imwrite(save_img_path, detection_img)
-    image_list = os.listdir("./image_data")
-    attendance_check = []
-    for path in image_list:
-        result = prediction_results(path)
         attendance_check.append(detection_class(result))
+        count += 1
     return attendance_check
+
+
+# 테스트용
+# def video(video_path, model, colab=True, cuda=True):
+    # if not os.path.isdir("./image_data"):
+    #     os.mkdir("./image_data")
+    # if not os.path.isdir("./save_data"):
+    #     os.mkdir("./save_data")
+    # vidcap = cv2.VideoCapture(video_path)
+    # success, image = vidcap.read()
+    # count = 0
+    # for _ in range(0, 10, 1):
+    #     img_path = f"./image_data/{count:06d}.jpg"
+    #     cv2.imwrite(img_path, image)
+    #     success, image = vidcap.read()
+    #     count += 1
+    # count = 0
+    # attendance_check = []
+    # for path in natsort.natsorted(os.listdir('image_data')):
+    #     save_img_path = f"./save_data/{count:06d}.jpg"
+    #     img_path = os.path.join("./image_data", path)
+    #     result = prediction_results(img_path, model, cuda)
+    #     detection_img = predict_imshow(img_path, result, colab)
+    #     cv2.imwrite(save_img_path, detection_img)
+    #     attendance_check.append(detection_class(result))
+    #     count += 1
+    # return attendance_check
