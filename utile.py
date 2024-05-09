@@ -15,7 +15,7 @@ def image_processing(img_path):
 def predict_imshow(img_path, results, show=True, colab=True):
     img = image_processing(img_path)
     img = results[0].plot()
-    if show == True:
+    if show == False:
         return img
     
     elif colab == True:
@@ -56,24 +56,52 @@ def matching_class(names, counts):
             print(f"{name}: 출석 X")
 
 class ImageHandler(FileSystemEventHandler):
-    def __init__(self, model, save_folder_path):
-        self.model = prediction_results()
+    def __init__(self, model, save_folder_path, cuda):
+        self.model = model
+        self.cuda = cuda
         self.save_folder_path = save_folder_path
-        if not os.path.isdir("./save_data"):
-           os.mkdir("./save_data")
+        if not os.path.isdir(self.save_folder_path):
+            os.makedirs(self.save_folder_path)
+    
+    def image_processing(self, img_path):
+        img = cv2.imread(img_path)
+        img = cv2.resize(img, (640, 640))
+        return img
+
+    def prediction_results(self, img_path):
+        if self.cuda == True:
+            return self.model.predict(image_processing(img_path), device="0")
+        return self.cudamodel.predict(image_processing(img_path))
+
     def on_created(self, event):
         if event.is_directory:
             return
         if event.src_path.lower().endswith((".png", ".jpg", ".jpeg")):
             try:
                 result = self.prediction_results(event.src_path, self.model)
-                result_img_save(result)
-                return detection_class(result)
+                self.result_img_save(result, event.src_path)  # 결과 이미지 저장
+                attendance = self.detection_class(result)
+                self.log_attendance(event.src_path, attendance)  # 출석 결과 로깅
             except Exception as e:
                 print(f"Failed to process {event.src_path}: {e}")
-    
-def start_program(image_folder_path, model):
-    event_handler = ImageHandler(model)
+
+    def result_img_save(self, result_img):
+        return cv2.imwrite("./save_data", result_img[0].plot())
+
+    def matching_class(names, counts):
+        for name in names:
+            number = len(name) * 1000
+            if number >= counts:
+                print(f"{name}: 출석 O")
+            else:
+                print(f"{name}: 출석 X")
+
+    def log_attendance(self, src_path, attendance):
+        with open(os.path.join(self.save_folder_path, "attendance_log.txt"), "a") as f:
+            f.write(f"{src_path}: {attendance}\n")
+
+def start_program(image_folder_path, model, save_folder_path):
+    event_handler = ImageHandler(model, save_folder_path)
     observer = Observer()
     observer.schedule(event_handler, path=image_folder_path, recursive=False)
     observer.start()
